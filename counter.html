@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Step Counter</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #0f0f0f;
+      height: 100vh;
+      height: 100dvh;
+      font-family: 'Inter', sans-serif;
+      user-select: none;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ── MOBILE (default) ── */
+    .wrapper {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      height: 100%;
+    }
+
+    .container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+    }
+
+    .container.team2 { border-top: none; }
+
+    .label {
+      color: #aaa;
+      font-size: 12px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 4px;
+      transition: color 0.2s, background 0.2s;
+    }
+    .label:hover, .label:active { color: #ccc; background: #1a1a1a; }
+
+    .label-input {
+      background: none;
+      border: none;
+      border-bottom: 1px solid #4ade80;
+      color: #4ade80;
+      font-size: 12px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      text-align: center;
+      outline: none;
+      width: 160px;
+      padding: 4px 0;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .count {
+      color: #fff;
+      font-size: 96px;
+      font-weight: 700;
+      line-height: 1;
+      display: flex;
+      justify-content: center;
+    }
+
+    .digit { display: inline-block; transition: none; }
+    .digit-units.bump {
+      transform: scale(1.18);
+      color: #4ade80;
+      transition: transform 0.08s ease, color 0.1s ease;
+    }
+
+    .tap-btn {
+      width: 110px;
+      height: 110px;
+      border-radius: 50%;
+      background: #1a1a1a;
+      border: 2px solid #2a2a2a;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.1s, transform 0.08s, border-color 0.1s;
+      -webkit-tap-highlight-color: transparent;
+      outline: none;
+      touch-action: manipulation;
+    }
+    .tap-btn:active {
+      background: #222;
+      border-color: #4ade80;
+      transform: scale(0.93);
+    }
+    .tap-btn svg { width: 32px; height: 32px; fill: #888; transition: fill 0.1s; }
+    .tap-btn:active svg { fill: #4ade80; }
+    .tap-btn:disabled { opacity: 0.2; pointer-events: none; }
+
+    .reset-btn {
+      background: none;
+      border: none;
+      color: #666;
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      cursor: pointer;
+      padding: 4px 12px;
+      transition: color 0.2s;
+      outline: none;
+    }
+    .reset-btn:hover, .reset-btn:active { color: #999; }
+
+    /* ── Center rounds bar (mobile = horizontal) ── */
+    .center {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      padding: 10px 0;
+      gap: 0;
+      width: 100%;
+      position: relative;
+    }
+
+    .divider-line-h {
+      height: 1px;
+      flex: 1;
+      background: #2a2a2a;
+      max-width: 40px;
+    }
+
+    .rounds-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Mobile: rounds are horizontal (one row of 4 round-cols) */
+    .rounds {
+      display: flex;
+      flex-direction: row;
+      gap: 6px;
+    }
+
+    /* Each "round-col" = vertical pair: team1 score on top, dot, team2 score below */
+    .round-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .score-cell {
+      width: 34px;
+      height: 30px;
+      border: 1px solid #444;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 500;
+      color: #777;
+      background: #141414;
+      transition: color 0.3s, border-color 0.3s, background 0.3s;
+    }
+    .score-cell.filled { color: #fff; border-color: #3a3a3a; background: #1a1a1a; }
+    .score-cell.winner { color: #4ade80; border-color: #4ade80; background: #0d1f14; }
+
+    .round-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #555;
+      transition: background 0.3s;
+      flex-shrink: 0;
+    }
+    .round-dot.active { background: #4ade80; }
+    .round-dot.done { background: #666; }
+
+    .round-indicator {
+      font-size: 9px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: #777;
+      text-align: center;
+    }
+    .round-indicator span { color: #4ade80; }
+
+    .final-banner {
+      font-size: 9px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: #4ade80;
+      opacity: 0;
+      transition: opacity 0.4s;
+      text-align: center;
+    }
+    .final-banner.visible { opacity: 1; }
+
+    #confetti-canvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      pointer-events: none;
+      z-index: 999;
+    }
+
+    /* ── DESKTOP override ── */
+    @media (min-width: 640px) {
+      .wrapper {
+        flex-direction: row;
+      }
+
+      .container {
+        gap: 28px;
+      }
+
+      .count { font-size: 100px; }
+
+      .tap-btn { width: 130px; height: 130px; }
+      .tap-btn svg { width: 36px; height: 36px; }
+
+      .center {
+        flex-direction: column;
+        width: auto;
+        padding: 0;
+        gap: 0;
+      }
+
+      .divider-line-h {
+        width: 1px;
+        height: 50px;
+        flex: none;
+        max-width: none;
+      }
+
+      /* Desktop: rounds vertical (original column layout) */
+      .rounds {
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      /* Desktop: each round-col becomes a round-row (horizontal pair) */
+      .round-col {
+        flex-direction: row;
+        gap: 4px;
+      }
+
+      .score-cell { width: 36px; height: 36px; font-size: 13px; }
+      .round-dot { width: 8px; height: 8px; margin: 0 4px; }
+    }
+  </style>
+</head>
+<body>
+<canvas id="confetti-canvas"></canvas>
+<div class="wrapper">
+
+  <div class="container">
+    <div class="label" id="label1" onclick="editLabel(1)">Team 1</div>
+    <div class="count" id="count1">
+      <span class="digit digit-tens" id="tens1">0</span><span class="digit digit-units" id="units1">0</span>
+    </div>
+    <button class="tap-btn" id="tapBtn1" onclick="tap(1)">
+      <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9v6.17L3.41 16.76A1 1 0 0 0 4 18.41V20a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-1.59a1 1 0 0 0-.59-.65L17 15.17V9c0-3.87-3.13-7-7-7zm0 2c2.76 0 5 2.24 5 5v7l2 1H5l2-1V9c0-2.76 2.24-5 5-5z"/></svg>
+    </button>
+    <button class="reset-btn" onclick="resetCurrent()">Reset Round</button>
+  </div>
+
+  <div class="center">
+    <div class="divider-line-h"></div>
+    <div class="rounds-wrap">
+      <div class="round-indicator" id="roundIndicator">Round <span id="roundNum">1</span> / 4</div>
+      <div class="rounds" id="roundsGrid"></div>
+      <div class="final-banner" id="finalBanner">Final Round</div>
+    </div>
+    <div class="divider-line-h"></div>
+  </div>
+
+  <div class="container team2">
+    <div class="label" id="label2" onclick="editLabel(2)">Team 2</div>
+    <div class="count" id="count2">
+      <span class="digit digit-tens" id="tens2">0</span><span class="digit digit-units" id="units2">0</span>
+    </div>
+    <button class="tap-btn" id="tapBtn2" onclick="tap(2)">
+      <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9v6.17L3.41 16.76A1 1 0 0 0 4 18.41V20a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-1.59a1 1 0 0 0-.59-.65L17 15.17V9c0-3.87-3.13-7-7-7zm0 2c2.76 0 5 2.24 5 5v7l2 1H5l2-1V9c0-2.76 2.24-5 5-5z"/></svg>
+    </button>
+    <button class="reset-btn" onclick="resetCurrent()">Reset Round</button>
+  </div>
+
+</div>
+
+<script>
+  const TOTAL_ROUNDS = 4;
+  const WIN_SCORE = 25;
+  const DASH = String.fromCharCode(8211);
+
+  const counts = { 1: 0, 2: 0 };
+  let currentRound = 1;
+  const history = [];
+  let gameOver = false;
+
+  const canvas = document.getElementById('confetti-canvas');
+  const ctx = canvas.getContext('2d');
+  let particles = [];
+  let confettiRAF = null;
+  const COLORS = ['#f43f5e','#fb923c','#facc15','#4ade80','#38bdf8','#a78bfa','#f472b6','#e879f9'];
+
+  function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+  window.addEventListener('resize', resizeCanvas);
+  resizeCanvas();
+
+  function launchConfetti(side) {
+    const W = canvas.width, H = canvas.height;
+    const isMobile = window.innerWidth < 640;
+    var xMin, xMax, yMin, yMax;
+    if (isMobile) {
+      xMin = 0; xMax = W;
+      yMin = side === 1 ? 0 : H / 2;
+      yMax = side === 1 ? H / 2 : H;
+    } else {
+      xMin = side === 1 ? 0 : W / 2;
+      xMax = side === 1 ? W / 2 : W;
+      yMin = 0; yMax = 0;
+    }
+
+    particles = [];
+    for (var i = 0; i < 180; i++) {
+      particles.push({
+        x: xMin + Math.random() * (xMax - xMin),
+        y: isMobile ? yMin + Math.random() * (yMax - yMin) * 0.2 : -10 - Math.random() * 200,
+        w: 8 + Math.random() * 8,
+        h: 4 + Math.random() * 4,
+        color: COLORS[Math.floor(Math.random() * COLORS.length)],
+        rot: Math.random() * Math.PI * 2,
+        rotSpeed: (Math.random() - 0.5) * 0.15,
+        vx: (Math.random() - 0.5) * 2,
+        vy: 2 + Math.random() * 3,
+        fadeY: isMobile ? yMax * 0.85 : H * 0.85,
+        alpha: 1
+      });
+    }
+
+    if (confettiRAF) cancelAnimationFrame(confettiRAF);
+
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+      var alive = false;
+      particles.forEach(function(p) {
+        p.x += p.vx; p.y += p.vy; p.vy += 0.04; p.rot += p.rotSpeed;
+        if (p.y > p.fadeY) p.alpha -= 0.02;
+        if (p.alpha <= 0) return;
+        alive = true;
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, p.alpha);
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+        ctx.restore();
+      });
+      if (alive) confettiRAF = requestAnimationFrame(draw);
+      else ctx.clearRect(0, 0, W, H);
+    }
+    draw();
+  }
+
+  function buildGrid() {
+    const grid = document.getElementById('roundsGrid');
+    while (grid.firstChild) grid.removeChild(grid.firstChild);
+
+    for (var r = 1; r <= TOTAL_ROUNDS; r++) {
+      const col = document.createElement('div');
+      col.className = 'round-col';
+      col.id = 'col' + r;
+
+      const c1 = document.createElement('div');
+      c1.className = 'score-cell'; c1.id = 'cell1-' + r; c1.textContent = DASH;
+
+      const dot = document.createElement('div');
+      dot.className = 'round-dot'; dot.id = 'dot' + r;
+
+      const c2 = document.createElement('div');
+      c2.className = 'score-cell'; c2.id = 'cell2-' + r; c2.textContent = DASH;
+
+      col.appendChild(c1);
+      col.appendChild(dot);
+      col.appendChild(c2);
+      grid.appendChild(col);
+    }
+    updateGrid();
+  }
+
+  function updateGrid() {
+    for (var r = 1; r <= TOTAL_ROUNDS; r++) {
+      const dot = document.getElementById('dot' + r);
+      const c1 = document.getElementById('cell1-' + r);
+      const c2 = document.getElementById('cell2-' + r);
+      const h = history[r - 1];
+
+      if (h) {
+        c1.textContent = h.s1; c2.textContent = h.s2;
+        c1.className = 'score-cell filled' + (h.winner === 1 ? ' winner' : '');
+        c2.className = 'score-cell filled' + (h.winner === 2 ? ' winner' : '');
+        dot.className = 'round-dot done';
+      } else if (r === currentRound && currentRound <= TOTAL_ROUNDS) {
+        c1.textContent = DASH; c2.textContent = DASH;
+        c1.className = 'score-cell'; c2.className = 'score-cell';
+        dot.className = 'round-dot active';
+      } else {
+        c1.textContent = DASH; c2.textContent = DASH;
+        c1.className = 'score-cell'; c2.className = 'score-cell';
+        dot.className = 'round-dot';
+      }
+    }
+    const isFinal = currentRound > TOTAL_ROUNDS;
+    document.getElementById('roundIndicator').style.display = isFinal ? 'none' : '';
+    document.getElementById('roundNum').textContent = currentRound;
+    document.getElementById('finalBanner').classList.toggle('visible', isFinal);
+  }
+
+  function render(n) {
+    const v = counts[n];
+    document.getElementById('tens' + n).textContent = Math.floor(v / 10) % 10;
+    document.getElementById('units' + n).textContent = v % 10;
+  }
+
+  function bump(n) {
+    const u = document.getElementById('units' + n);
+    u.classList.remove('bump'); void u.offsetWidth; u.classList.add('bump');
+    setTimeout(function() { u.classList.remove('bump'); }, 150);
+  }
+
+  function tap(n) {
+    if (gameOver) return;
+    counts[n]++; render(n); bump(n);
+
+    if (currentRound <= TOTAL_ROUNDS && counts[n] >= WIN_SCORE) {
+      endRound(n);
+    } else if (currentRound > TOTAL_ROUNDS && counts[n] >= WIN_SCORE) {
+      gameOver = true;
+      document.getElementById('tapBtn1').disabled = true;
+      document.getElementById('tapBtn2').disabled = true;
+
+      const finalHistory = history.concat([{ s1: counts[1], s2: counts[2], winner: n }]);
+      const w1 = finalHistory.filter(function(h) { return h.winner === 1; }).length;
+      const w2 = finalHistory.filter(function(h) { return h.winner === 2; }).length;
+      const ow = w1 > w2 ? 1 : w2 > w1 ? 2 : 0;
+
+      if (ow !== 0) {
+        launchConfetti(ow);
+      } else {
+        launchConfetti(1);
+        setTimeout(function() { launchConfetti(2); }, 300);
+      }
+    }
+  }
+
+  function endRound(winner) {
+    history.push({ s1: counts[1], s2: counts[2], winner: winner });
+    currentRound++; counts[1] = 0; counts[2] = 0;
+    render(1); render(2); updateGrid();
+  }
+
+  function resetCurrent() {
+    if (gameOver) {
+      gameOver = false; currentRound = 1; history.length = 0;
+      counts[1] = 0; counts[2] = 0; render(1); render(2);
+      document.getElementById('tapBtn1').disabled = false;
+      document.getElementById('tapBtn2').disabled = false;
+      if (confettiRAF) { cancelAnimationFrame(confettiRAF); confettiRAF = null; }
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      particles = [];
+      buildGrid();
+    } else {
+      counts[1] = 0; counts[2] = 0; render(1); render(2);
+    }
+  }
+
+  function editLabel(n) {
+    const el = document.getElementById('label' + n);
+    const current = el.textContent;
+    const input = document.createElement('input');
+    input.className = 'label-input'; input.value = current;
+    el.replaceWith(input); input.focus(); input.select();
+
+    function save() {
+      const div = document.createElement('div');
+      div.className = 'label'; div.id = 'label' + n;
+      div.textContent = input.value.trim() || current;
+      div.onclick = function() { editLabel(n); };
+      input.replaceWith(div);
+    }
+    input.addEventListener('blur', save);
+    input.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') input.blur();
+      if (e.key === 'Escape') { input.value = current; input.blur(); }
+    });
+  }
+
+  buildGrid();
+</script>
+</body>
+</html>
